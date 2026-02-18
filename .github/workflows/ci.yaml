@@ -122,7 +122,7 @@ jobs:
         with:
           use-public-rspm: true
 
-      - uses: ./.github/actions/parse-deps
+      - uses: cynkra/blockr.ci/.github/actions/parse-deps@main
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}
@@ -175,7 +175,7 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-      - uses: ./.github/actions/parse-deps
+      - uses: cynkra/blockr.ci/.github/actions/parse-deps@main
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}
@@ -264,7 +264,7 @@ jobs:
         with:
           path: pkg
 
-      - uses: ./.github/actions/parse-deps
+      - uses: cynkra/blockr.ci/.github/actions/parse-deps@main
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}

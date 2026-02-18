@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: ./.github/actions/rerun-deps
+      - uses: cynkra/blockr.ci/.github/actions/rerun-deps@main
         with:
           old-body: ${{ github.event.changes.body.from }}
           new-body: ${{ github.event.pull_request.body }}
