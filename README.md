@@ -87,6 +87,44 @@ jobs:
 - **parse-deps** — override dependency versions via a `` ```deps `` block in the PR body
 - **deps-rerun** — automatically re-run affected jobs when the deps block changes
 
+## Overriding dependency refs in PRs
+
+When developing across blockr packages, you often need CI to test against a branch or PR of an upstream dependency rather than the released version. Add a fenced `deps` block to the PR body to override what gets installed during smoke, check, and revdep jobs:
+
+````markdown
+```deps
+cynkra/blockr.core@my-feature-branch
+cynkra/blockr.dock#42
+```
+````
+
+Each line is a pak ref. Two override syntaxes are supported:
+
+- **`owner/repo@branch`** — install from a specific branch
+- **`owner/repo#123`** — install from a pull request
+
+These refs are passed to `r-lib/actions/setup-r-dependencies` as extra packages and override whatever version would normally be installed. For revdep checks, the `#123` and `@branch` syntax also controls which ref of the downstream package gets checked out.
+
+### How it works
+
+The **parse-deps** composite action extracts the `deps` block from the PR body on every CI run. The **deps-rerun** workflow watches for PR body edits — when the `deps` block changes, it automatically re-runs the smoke and revdep jobs without needing a new push.
+
+### Example
+
+You're working on `blockr.dock` and need it tested against an in-progress PR on `blockr.core`:
+
+1. Open your PR on `blockr.dock`
+2. Add to the PR body:
+
+   ````markdown
+   ```deps
+   cynkra/blockr.core#87
+   ```
+   ````
+
+3. CI installs `blockr.core` from PR #87 instead of the default branch
+4. If you later change the deps block (e.g., point to a different PR), the affected jobs re-run automatically
+
 ## Required secrets
 
 - `BLOCKR_PAT` — GitHub PAT with access to private blockr repos
