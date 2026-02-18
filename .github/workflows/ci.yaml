@@ -244,8 +244,6 @@ jobs:
 
     needs: smoke
 
-    if: ${{ inputs.revdep-packages != '[]' && inputs.revdep-packages != '' }}
-
     runs-on: ubuntu-latest
 
     name: revdep (${{ matrix.pkg }})
@@ -253,7 +251,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pkg: ${{ fromJson(inputs.revdep-packages) }}
+        pkg: ${{ fromJson(inputs.revdep-packages || '[]') }}
 
     env:
       GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
