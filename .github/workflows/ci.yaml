@@ -15,7 +15,8 @@
 #     ci:
 #       uses: cynkra/blockr.ci/.github/workflows/ci.yaml@main
 #       with:
-#         revdep-packages: '["BristolMyersSquibb/blockr.dock"]'
+#         revdep-packages: |
+#           BristolMyersSquibb/blockr.dock
 #       secrets: inherit
 #       permissions:
 #         contents: write
@@ -31,11 +32,10 @@ on:
 
       revdep-packages:
         description: >
-          JSON array of downstream packages to reverse-dependency check.
-          Example: '["BristolMyersSquibb/blockr.dock", "BristolMyersSquibb/blockr.dag"]'
-          Omit or pass '[]' to skip the revdep job.
+          Newline-separated list of downstream packages to reverse-dependency
+          check.  Omit or leave empty to skip the revdep job.
         type: string
-        default: '[]'
+        default: ''
         required: false
 
       lintr-exclusions:
@@ -240,9 +240,26 @@ jobs:
 
   # ── Reverse-dependency checks ────────────────────────────────────────
 
+  revdep-matrix:
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      packages: ${{ steps.set.outputs.packages }}
+
+    steps:
+      - name: Build matrix
+        id: set
+        env:
+          INPUT: ${{ inputs.revdep-packages }}
+        run: |
+          pkgs=$(echo "$INPUT" | tr -d '\r' | sed '/^[[:space:]]*$/d' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          json=$(echo "$pkgs" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "packages=${json}" >> "$GITHUB_OUTPUT"
+
   revdep:
 
-    needs: smoke
+    needs: [smoke, revdep-matrix]
 
     runs-on: ubuntu-latest
 
@@ -251,7 +268,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pkg: ${{ fromJson(inputs.revdep-packages || '[]') }}
+        pkg: ${{ fromJson(needs.revdep-matrix.outputs.packages) }}
 
     env:
       GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
