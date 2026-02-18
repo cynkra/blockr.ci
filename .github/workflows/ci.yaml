@@ -148,8 +148,6 @@ jobs:
 
     runs-on: ${{ matrix.config.os }}
 
-    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
-
     strategy:
       fail-fast: false
       matrix:
@@ -269,8 +267,6 @@ jobs:
     if: needs.revdep-matrix.outputs.has-packages == 'true'
 
     runs-on: ubuntu-latest
-
-    name: revdep (${{ matrix.pkg }})
 
     strategy:
       fail-fast: false
