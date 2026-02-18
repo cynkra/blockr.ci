@@ -129,8 +129,8 @@
 <tbody>
 <tr class="odd">
 <td><code>revdep-packages</code></td>
-<td>JSON array string</td>
-<td><code>'[]'</code></td>
+<td>newline-separated list</td>
+<td><code>''</code></td>
 <td>Downstream packages to reverse-dep check. Empty skips the job.</td>
 </tr>
 <tr class="even">
@@ -154,11 +154,13 @@
 <span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="at">  </span><span class="fu">ci</span><span class="kw">:</span></span>
 <span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> cynkra/blockr.ci/.github/workflows/ci.yaml@main</span></span>
 <span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="at">      </span><span class="fu">revdep-packages</span><span class="kw">:</span><span class="at"> </span><span class="st">'["cynkra/blockr.dock", "cynkra/blockr.dag"]'</span></span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="at">      </span><span class="fu">lintr-exclusions</span><span class="kw">:</span><span class="at"> </span><span class="st">"vignettes/foo.qmd, vignettes/bar.qmd"</span></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span><span class="at"> inherit</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span></code></pre></div>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="fu">      revdep-packages</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>        cynkra/blockr.dock</span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>        cynkra/blockr.dag</span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="at">      </span><span class="fu">lintr-exclusions</span><span class="kw">:</span><span class="at"> </span><span class="st">"vignettes/foo.qmd, vignettes/bar.qmd"</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span><span class="at"> inherit</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
