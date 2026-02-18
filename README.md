@@ -130,7 +130,7 @@ You're working on `blockr.dock` and need it tested against an in-progress PR on 
 3. CI installs `blockr.core` from PR #87 instead of the default branch
 4. If you later change the deps block (e.g., point to a different PR), the affected jobs re-run automatically
 
-## Required secrets
+## Secrets
 
-- `BLOCKR_PAT` — GitHub PAT with access to private blockr repos
+- `BLOCKR_PAT` (optional) — GitHub PAT with access to private blockr repos. Falls back to `GITHUB_TOKEN` if not set, which is sufficient for public repos.
 - `CODECOV_TOKEN` — for coverage uploads

@@ -39,4 +39,4 @@ jobs:
           new-body: ${{ github.event.pull_request.body }}
           sha: ${{ github.event.pull_request.head.sha }}
           repo: ${{ github.repository }}
-          token: ${{ secrets.BLOCKR_PAT }}
+          token: ${{ secrets.BLOCKR_PAT || github.token }}

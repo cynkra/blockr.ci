@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT || github.token }}
 
     steps:
       - uses: actions/checkout@v4
@@ -109,7 +109,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT || github.token }}
       R_KEEP_PKG_SOURCE: yes
 
     steps:
@@ -158,7 +158,7 @@ jobs:
           - {os: ubuntu-latest,  r: 'oldrel-1'}
 
     env:
-      GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT || github.token }}
       R_KEEP_PKG_SOURCE: yes
 
     steps:
@@ -198,7 +198,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT || github.token }}
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     steps:
@@ -274,7 +274,7 @@ jobs:
         pkg: ${{ fromJson(needs.revdep-matrix.outputs.packages) }}
 
     env:
-      GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT || github.token }}
       R_KEEP_PKG_SOURCE: yes
 
     steps:
@@ -296,7 +296,7 @@ jobs:
         with:
           repository: ${{ matrix.pkg }}
           ref: ${{ steps.deps.outputs.ref }}
-          token: ${{ secrets.BLOCKR_PAT || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.BLOCKR_PAT || github.token }}
           path: revdep
 
       - uses: r-lib/actions/setup-pandoc@v2
@@ -329,7 +329,7 @@ jobs:
       group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
 
     env:
-      GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT || github.token }}
 
     permissions:
       contents: write
