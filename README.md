@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/cynkra/blockr.ci/actions/workflows/ci.yaml/badge.svg)](https://github.com/cynkra/blockr.ci/actions/workflows/ci.yaml)
 
-Reusable GitHub Actions CI workflows for the [blockr](https://github.com/blockr-org) ecosystem.
+Reusable GitHub Actions CI workflows for the [blockr](https://bristolmyerssquibb.github.io/blockr-site/) ecosystem.
 
 ## Usage
 
