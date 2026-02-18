@@ -38,14 +38,6 @@ on:
         default: '[]'
         required: false
 
-      extra-pkgdown-packages:
-        description: >
-          Additional pak refs for the pkgdown site build, comma-separated.
-          Example: 'github::DivadNojnarg/DiagrammeR'
-        type: string
-        default: ''
-        required: false
-
       lintr-exclusions:
         description: >
           Comma-separated file paths to exclude from linting.
@@ -333,21 +325,9 @@ jobs:
         with:
           use-public-rspm: true
 
-      - name: Compute extra packages
-        id: pkgdown-deps
-        shell: bash
-        env:
-          EXTRA: ${{ inputs.extra-pkgdown-packages }}
-        run: |
-          pkgs="any::pkgdown, local::."
-          if [ -n "$EXTRA" ]; then
-            pkgs="${pkgs}, ${EXTRA}"
-          fi
-          echo "packages=${pkgs}" >> "$GITHUB_OUTPUT"
-
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: ${{ steps.pkgdown-deps.outputs.packages }}
+          extra-packages: any::pkgdown, local::.
           needs: website
 
       - name: Remove mermaid config for CI

@@ -60,7 +60,6 @@ All steps are mandatory — a consumer gets the full pipeline or none of it.
 | Input | Type | Default | Purpose |
 |---|---|---|---|
 | `revdep-packages` | JSON array string | `'[]'` | Downstream packages to reverse-dep check. Empty skips the job. |
-| `extra-pkgdown-packages` | string | `''` | Additional pak refs for pkgdown (e.g. `github::DivadNojnarg/DiagrammeR`) |
 | `lintr-exclusions` | string | `''` | Comma-separated file paths to exclude from linting |
 | `skip-pkgdown` | boolean | `false` | Skip pkgdown for repos with custom site builds |
 
@@ -72,7 +71,6 @@ jobs:
     uses: cynkra/blockr.ci/.github/workflows/ci.yaml@main
     with:
       revdep-packages: '["cynkra/blockr.dock", "cynkra/blockr.dag"]'
-      extra-pkgdown-packages: "github::DivadNojnarg/DiagrammeR"
       lintr-exclusions: "vignettes/foo.qmd, vignettes/bar.qmd"
     secrets: inherit
     permissions:
