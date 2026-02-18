@@ -245,6 +245,7 @@ jobs:
 
     outputs:
       packages: ${{ steps.set.outputs.packages }}
+      has-packages: ${{ steps.set.outputs.has-packages }}
 
     steps:
       - name: Build matrix
@@ -255,10 +256,17 @@ jobs:
           pkgs=$(echo "$INPUT" | tr -d '\r' | sed '/^[[:space:]]*$/d' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
           json=$(echo "$pkgs" | jq -R -s -c 'split("\n") | map(select(length > 0))')
           echo "packages=${json}" >> "$GITHUB_OUTPUT"
+          if [ "$json" = "[]" ]; then
+            echo "has-packages=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-packages=true" >> "$GITHUB_OUTPUT"
+          fi
 
   revdep:
 
     needs: [smoke, revdep-matrix]
+
+    if: needs.revdep-matrix.outputs.has-packages == 'true'
 
     runs-on: ubuntu-latest
 
