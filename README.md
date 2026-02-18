@@ -16,6 +16,7 @@ on:
     branches: main
   pull_request:
     branches: main
+  merge_group:
 
 name: ci
 
@@ -46,7 +47,7 @@ jobs:
 ## Pipeline
 
 ```
-lint → smoke → check       (multi-platform, push only)
+lint → smoke → check       (multi-platform, merge queue + push)
              → coverage
              → revdep      (if configured)
              → pkgdown
@@ -82,7 +83,7 @@ jobs:
 
 - **Lint** with a canonical lintr config (`object_name_linter = NULL`)
 - **Smoke test** — single-platform R CMD check (PR gate)
-- **Full check** — 4-platform matrix (macOS, Windows, Ubuntu devel, Ubuntu oldrel), push only
+- **Full check** — 4-platform matrix (macOS, Windows, Ubuntu devel, Ubuntu oldrel), merge queue + push
 - **Coverage** via covr + codecov
 - **Reverse-dependency checks** against configurable downstream packages
 - **pkgdown** site build + deploy to gh-pages

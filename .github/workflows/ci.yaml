@@ -7,6 +7,7 @@
 #       branches: main
 #     pull_request:
 #       branches: main
+#     merge_group:
 #
 #   name: ci
 #
@@ -24,6 +25,7 @@ on:
     branches: main
   pull_request:
     branches: main
+  merge_group:
   workflow_call:
     inputs:
 
@@ -145,7 +147,7 @@ jobs:
         with:
           upload-snapshots: true
 
-  # ── Full R CMD check (multi-platform, push-to-main only) ─────────────
+  # ── Full R CMD check (multi-platform, merge queue + push) ─────────────
 
   check:
 
@@ -356,7 +358,7 @@ jobs:
         shell: Rscript {0}
 
       - name: Deploy to GitHub pages
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push'
         uses: JamesIves/github-pages-deploy-action@v4.4.1
         with:
           clean: false
