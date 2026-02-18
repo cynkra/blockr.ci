@@ -135,9 +135,9 @@
 </tr>
 <tr class="even">
 <td><code>lintr-exclusions</code></td>
-<td>string</td>
+<td>newline-separated list</td>
 <td><code>''</code></td>
-<td>Comma-separated file paths to exclude from linting</td>
+<td>File paths to exclude from linting</td>
 </tr>
 <tr class="odd">
 <td><code>skip-pkgdown</code></td>
@@ -157,10 +157,12 @@
 <span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="fu">      revdep-packages</span><span class="kw">: </span><span class="ch">|</span></span>
 <span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>        cynkra/blockr.dock</span>
 <span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>        cynkra/blockr.dag</span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="at">      </span><span class="fu">lintr-exclusions</span><span class="kw">:</span><span class="at"> </span><span class="st">"vignettes/foo.qmd, vignettes/bar.qmd"</span></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span><span class="at"> inherit</span></span>
-<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span></code></pre></div>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="fu">      lintr-exclusions</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>        vignettes/foo.qmd</span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>        vignettes/bar.qmd</span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span><span class="at"> inherit</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
