@@ -296,7 +296,7 @@ jobs:
         with:
           repository: ${{ matrix.pkg }}
           ref: ${{ steps.deps.outputs.ref }}
-          token: ${{ secrets.BLOCKR_PAT }}
+          token: ${{ secrets.BLOCKR_PAT || secrets.GITHUB_TOKEN }}
           path: revdep
 
       - uses: r-lib/actions/setup-pandoc@v2
