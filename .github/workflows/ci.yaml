@@ -40,8 +40,7 @@ on:
 
       lintr-exclusions:
         description: >
-          Comma-separated file paths to exclude from linting.
-          Example: 'vignettes/foo.qmd, vignettes/bar.qmd'
+          Newline-separated file paths to exclude from linting.
         type: string
         default: ''
         required: false
@@ -85,7 +84,7 @@ jobs:
         shell: Rscript {0}
         run: |
           excl <- Sys.getenv("LINTR_EXCLUSIONS")
-          paths <- if (nzchar(excl)) trimws(strsplit(excl, ",")[[1]]) else character()
+          paths <- if (nzchar(excl)) trimws(strsplit(excl, "[,\n]")[[1]]) else character()
           paths <- paths[nzchar(paths)]
 
           cfg <- "linters: linters_with_defaults(\n  object_name_linter = NULL\n  )"

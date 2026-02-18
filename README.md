@@ -60,7 +60,7 @@ All steps are mandatory — a consumer gets the full pipeline or none of it.
 | Input | Type | Default | Purpose |
 |---|---|---|---|
 | `revdep-packages` | newline-separated list | `''` | Downstream packages to reverse-dep check. Empty skips the job. |
-| `lintr-exclusions` | string | `''` | Comma-separated file paths to exclude from linting |
+| `lintr-exclusions` | newline-separated list | `''` | File paths to exclude from linting |
 | `skip-pkgdown` | boolean | `false` | Skip pkgdown for repos with custom site builds |
 
 ### Example with all inputs
@@ -73,7 +73,9 @@ jobs:
       revdep-packages: |
         cynkra/blockr.dock
         cynkra/blockr.dag
-      lintr-exclusions: "vignettes/foo.qmd, vignettes/bar.qmd"
+      lintr-exclusions: |
+        vignettes/foo.qmd
+        vignettes/bar.qmd
     secrets: inherit
     permissions:
       contents: write
