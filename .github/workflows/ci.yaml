@@ -1,0 +1,364 @@
+# Centralised CI pipeline for blockr.* packages
+#
+# Usage — consumer repo .github/workflows/ci.yaml:
+#
+#   on:
+#     push:
+#       branches: main
+#     pull_request:
+#       branches: main
+#
+#   name: ci
+#
+#   jobs:
+#     ci:
+#       uses: cynkra/blockr.ci/.github/workflows/ci.yaml@main
+#       with:
+#         revdep-packages: '["BristolMyersSquibb/blockr.dock"]'
+#       secrets: inherit
+#       permissions:
+#         contents: write
+
+on:
+  push:
+    branches: main
+  pull_request:
+    branches: main
+  workflow_call:
+    inputs:
+
+      revdep-packages:
+        description: >
+          JSON array of downstream packages to reverse-dependency check.
+          Example: '["BristolMyersSquibb/blockr.dock", "BristolMyersSquibb/blockr.dag"]'
+          Omit or pass '[]' to skip the revdep job.
+        type: string
+        default: '[]'
+        required: false
+
+      extra-pkgdown-packages:
+        description: >
+          Additional pak refs for the pkgdown site build, comma-separated.
+          Example: 'github::DivadNojnarg/DiagrammeR'
+        type: string
+        default: ''
+        required: false
+
+      lintr-exclusions:
+        description: >
+          Comma-separated file paths to exclude from linting.
+          Example: 'vignettes/foo.qmd, vignettes/bar.qmd'
+        type: string
+        default: ''
+        required: false
+
+      skip-pkgdown:
+        description: >
+          Set to true to skip the pkgdown job.  Useful for packages that
+          build their site differently (e.g. Quarto).
+        type: boolean
+        default: false
+        required: false
+
+name: ci
+
+jobs:
+
+  # ── Lint ──────────────────────────────────────────────────────────────
+
+  lint:
+
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::lintr, local::.
+          needs: lint
+
+      - name: Write lintr config
+        env:
+          LINTR_EXCLUSIONS: ${{ inputs.lintr-exclusions }}
+        shell: Rscript {0}
+        run: |
+          excl <- Sys.getenv("LINTR_EXCLUSIONS")
+          paths <- if (nzchar(excl)) trimws(strsplit(excl, ",")[[1]]) else character()
+          paths <- paths[nzchar(paths)]
+
+          cfg <- "linters: linters_with_defaults(\n  object_name_linter = NULL\n  )"
+          if (length(paths)) {
+            items <- paste0('  "', paths, '"', collapse = ",\n")
+            cfg <- paste0(cfg, "\nexclusions: list(\n", items, "\n  )")
+          }
+          writeLines(cfg, ".lintr")
+
+      - name: Lint
+        run: lintr::lint_package()
+        shell: Rscript {0}
+        env:
+          LINTR_ERROR_ON_LINT: true
+
+  # ── Smoke test (single-platform quick check, PR gate) ────────────────
+
+  smoke:
+
+    needs: lint
+
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: ./.github/actions/parse-deps
+        id: deps
+        with:
+          pr-body: ${{ github.event.pull_request.body }}
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: ${{ steps.deps.outputs.extra-packages }}
+          needs: check
+
+      - name: Remove mermaid config for CI
+        run: Rscript -e 'unlink("vignettes/_metadata.yml")'
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+
+  # ── Full R CMD check (multi-platform, push-to-main only) ─────────────
+
+  check:
+
+    needs: smoke
+
+    if: github.event_name != 'pull_request'
+
+    runs-on: ${{ matrix.config.os }}
+
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: macos-latest,   r: 'release'}
+          - {os: windows-latest, r: 'release'}
+          - {os: ubuntu-latest,  r: 'devel', http-user-agent: 'release'}
+          - {os: ubuntu-latest,  r: 'oldrel-1'}
+
+    env:
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+
+      - uses: ./.github/actions/parse-deps
+        id: deps
+        with:
+          pr-body: ${{ github.event.pull_request.body }}
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: ${{ steps.deps.outputs.extra-packages }}
+          needs: check
+
+      - name: Remove mermaid config for CI
+        run: Rscript -e 'unlink("vignettes/_metadata.yml")'
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true
+
+  # ── Test coverage ────────────────────────────────────────────────────
+
+  coverage:
+
+    needs: smoke
+
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::covr
+          needs: coverage
+
+      - name: Test coverage
+        run: |
+          covr::codecov(
+            quiet = FALSE,
+            clean = FALSE,
+            install_path = file.path(Sys.getenv("RUNNER_TEMP"), "package")
+          )
+        shell: Rscript {0}
+
+      - name: Show testthat output
+        if: always()
+        run: |
+          find ${{ runner.temp }}/package -name 'testthat.Rout*' -exec cat '{}' \; || true
+        shell: bash
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-test-failures
+          path: ${{ runner.temp }}/package
+
+  # ── Reverse-dependency checks ────────────────────────────────────────
+
+  revdep:
+
+    needs: smoke
+
+    if: ${{ inputs.revdep-packages != '[]' && inputs.revdep-packages != '' }}
+
+    runs-on: ubuntu-latest
+
+    name: revdep (${{ matrix.pkg }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        pkg: ${{ fromJson(inputs.revdep-packages) }}
+
+    env:
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
+      R_KEEP_PKG_SOURCE: yes
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: pkg
+
+      - uses: ./.github/actions/parse-deps
+        id: deps
+        with:
+          pr-body: ${{ github.event.pull_request.body }}
+          pkg: ${{ matrix.pkg }}
+          base-packages: |
+            any::rcmdcheck
+            local::../pkg
+            local::../revdep
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.pkg }}
+          ref: ${{ steps.deps.outputs.ref }}
+          token: ${{ secrets.BLOCKR_PAT }}
+          path: revdep
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: ${{ steps.deps.outputs.extra-packages }}
+          working-directory: pkg
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          working-directory: revdep
+          build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+  # ── pkgdown site ─────────────────────────────────────────────────────
+
+  pkgdown:
+
+    needs: smoke
+
+    if: ${{ !inputs.skip-pkgdown }}
+
+    runs-on: ubuntu-latest
+
+    concurrency:
+      group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
+
+    env:
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT }}
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Compute extra packages
+        id: pkgdown-deps
+        shell: bash
+        env:
+          EXTRA: ${{ inputs.extra-pkgdown-packages }}
+        run: |
+          pkgs="any::pkgdown, local::."
+          if [ -n "$EXTRA" ]; then
+            pkgs="${pkgs}, ${EXTRA}"
+          fi
+          echo "packages=${pkgs}" >> "$GITHUB_OUTPUT"
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: ${{ steps.pkgdown-deps.outputs.packages }}
+          needs: website
+
+      - name: Remove mermaid config for CI
+        run: Rscript -e 'unlink("vignettes/_metadata.yml")'
+
+      - name: Build site
+        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
+        shell: Rscript {0}
+
+      - name: Deploy to GitHub pages
+        if: github.event_name != 'pull_request'
+        uses: JamesIves/github-pages-deploy-action@v4.4.1
+        with:
+          clean: false
+          branch: gh-pages
+          folder: docs

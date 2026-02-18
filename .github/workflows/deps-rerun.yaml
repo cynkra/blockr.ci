@@ -1,0 +1,42 @@
+# Re-run smoke/revdep jobs when the ```deps block in a PR body changes
+#
+# Usage — consumer repo .github/workflows/deps-rerun.yaml:
+#
+#   on:
+#     pull_request:
+#       branches: main
+#       types: [edited]
+#
+#   name: deps-rerun
+#
+#   jobs:
+#     rerun:
+#       uses: cynkra/blockr.ci/.github/workflows/deps-rerun.yaml@main
+#       secrets: inherit
+
+on:
+  pull_request:
+    branches: main
+    types: [edited]
+  workflow_call:
+
+name: deps-rerun
+
+jobs:
+
+  rerun-deps:
+
+    if: github.event.changes.body
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/rerun-deps
+        with:
+          old-body: ${{ github.event.changes.body.from }}
+          new-body: ${{ github.event.pull_request.body }}
+          sha: ${{ github.event.pull_request.head.sha }}
+          repo: ${{ github.repository }}
+          token: ${{ secrets.BLOCKR_PAT }}
