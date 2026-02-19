@@ -53,6 +53,15 @@ on:
         default: false
         required: false
 
+      default-deps:
+        description: >
+          Newline-separated pak refs always included in dependency resolution.
+          Useful for non-registry packages (e.g., cynkra/g6R).
+          Overrides registry entries; overridden by PR body deps block.
+        type: string
+        default: ''
+        required: false
+
 name: ci
 
 jobs:
@@ -125,6 +134,8 @@ jobs:
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}
+          description-path: DESCRIPTION
+          default-deps: ${{ inputs.default-deps }}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -176,6 +187,8 @@ jobs:
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}
+          description-path: DESCRIPTION
+          default-deps: ${{ inputs.default-deps }}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -291,6 +304,8 @@ jobs:
             any::rcmdcheck
             local::../pkg
             local::../revdep
+          description-path: pkg/DESCRIPTION
+          default-deps: ${{ inputs.default-deps }}
 
       - uses: actions/checkout@v4
         with:
