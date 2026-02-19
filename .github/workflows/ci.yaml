@@ -53,6 +53,15 @@ on:
         default: false
         required: false
 
+      default-deps:
+        description: >
+          Newline-separated pak refs always included in dependency resolution.
+          Useful for non-registry packages (e.g., cynkra/g6R).
+          Overrides registry entries; overridden by PR body deps block.
+        type: string
+        default: ''
+        required: false
+
 name: ci
 
 jobs:
@@ -108,6 +117,10 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    outputs:
+      revdep-packages: ${{ steps.revdep-matrix.outputs.packages }}
+      has-revdep-packages: ${{ steps.revdep-matrix.outputs.has-packages }}
+
     env:
       GITHUB_PAT: ${{ secrets.BLOCKR_PAT || github.token }}
       R_KEEP_PKG_SOURCE: yes
@@ -125,6 +138,8 @@ jobs:
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}
+          description-path: DESCRIPTION
+          default-deps: ${{ inputs.default-deps }}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -137,6 +152,20 @@ jobs:
       - uses: r-lib/actions/check-r-package@v2
         with:
           upload-snapshots: true
+
+      - name: Build revdep matrix
+        id: revdep-matrix
+        env:
+          INPUT: ${{ inputs.revdep-packages }}
+        run: |
+          pkgs=$(echo "$INPUT" | tr -d '\r' | sed '/^[[:space:]]*$/d' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+          json=$(echo "$pkgs" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "packages=${json}" >> "$GITHUB_OUTPUT"
+          if [ "$json" = "[]" ]; then
+            echo "has-packages=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-packages=true" >> "$GITHUB_OUTPUT"
+          fi
 
   # ── Full R CMD check (multi-platform, merge queue + push) ─────────────
 
@@ -176,6 +205,8 @@ jobs:
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}
+          description-path: DESCRIPTION
+          default-deps: ${{ inputs.default-deps }}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -237,41 +268,18 @@ jobs:
 
   # ── Reverse-dependency checks ────────────────────────────────────────
 
-  revdep-matrix:
-
-    runs-on: ubuntu-latest
-
-    outputs:
-      packages: ${{ steps.set.outputs.packages }}
-      has-packages: ${{ steps.set.outputs.has-packages }}
-
-    steps:
-      - name: Build matrix
-        id: set
-        env:
-          INPUT: ${{ inputs.revdep-packages }}
-        run: |
-          pkgs=$(echo "$INPUT" | tr -d '\r' | sed '/^[[:space:]]*$/d' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-          json=$(echo "$pkgs" | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          echo "packages=${json}" >> "$GITHUB_OUTPUT"
-          if [ "$json" = "[]" ]; then
-            echo "has-packages=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "has-packages=true" >> "$GITHUB_OUTPUT"
-          fi
-
   revdep:
 
-    needs: [smoke, revdep-matrix]
+    needs: smoke
 
-    if: needs.revdep-matrix.outputs.has-packages == 'true'
+    if: needs.smoke.outputs.has-revdep-packages == 'true'
 
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        pkg: ${{ fromJson(needs.revdep-matrix.outputs.packages) }}
+        pkg: ${{ fromJson(needs.smoke.outputs.revdep-packages) }}
 
     env:
       GITHUB_PAT: ${{ secrets.BLOCKR_PAT || github.token }}
@@ -291,6 +299,8 @@ jobs:
             any::rcmdcheck
             local::../pkg
             local::../revdep
+          description-path: pkg/DESCRIPTION
+          default-deps: ${{ inputs.default-deps }}
 
       - uses: actions/checkout@v4
         with:
