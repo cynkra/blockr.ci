@@ -98,6 +98,7 @@ jobs:
           needs: lint
 
       - name: Write lintr config
+        if: ${{ hashFiles('.lintr') == '' }}
         env:
           LINTR_EXCLUSIONS: ${{ inputs.lintr-exclusions }}
         shell: Rscript {0}
