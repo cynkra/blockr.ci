@@ -397,6 +397,18 @@ jobs:
         run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
         shell: Rscript {0}
 
+      - name: Generate install script
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir -p docs
+          cat > docs/install << 'OUTER'
+          local({
+            source("https://raw.githubusercontent.com/cynkra/blockr.ci/main/inst/install.R", local = TRUE)
+          OUTER
+          echo "  install_blockr(\"${REPO}\")" >> docs/install
+          echo "})" >> docs/install
+
       - name: Deploy to GitHub pages
         if: github.event_name == 'push'
         uses: JamesIves/github-pages-deploy-action@v4.4.1
@@ -404,3 +416,42 @@ jobs:
           clean: false
           branch: gh-pages
           folder: docs
+
+  # ── Install mechanism check ────────────────────────────────────────
+
+  install-check:
+
+    needs: smoke
+
+    if: github.event_name == 'push'
+
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_PAT: ${{ secrets.BLOCKR_PAT || github.token }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - name: Install via install.R
+        env:
+          REPO: ${{ github.repository }}
+        shell: Rscript {0}
+        run: |
+          source("https://raw.githubusercontent.com/cynkra/blockr.ci/main/inst/install.R")
+          install_blockr(Sys.getenv("REPO"))
+
+      - name: Run tests
+        shell: Rscript {0}
+        run: |
+          pkg <- read.dcf("DESCRIPTION", "Package")[[1]]
+          library(pkg, character.only = TRUE)
+          testthat::test_dir(
+            "tests/testthat",
+            reporter = "summary",
+            stop_on_failure = TRUE
+          )
