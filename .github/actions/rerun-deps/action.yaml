@@ -23,7 +23,7 @@ inputs:
   job-pattern:
     description: Extended-regex pattern matched against job names.
     required: false
-    default: ^(smoke|revdep)
+    default: ^(lint|smoke|revdep)
 
 runs:
   using: composite

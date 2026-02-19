@@ -82,9 +82,19 @@ jobs:
         with:
           use-public-rspm: true
 
+      - uses: cynkra/blockr.ci/.github/actions/parse-deps@main
+        id: deps
+        with:
+          pr-body: ${{ github.event.pull_request.body }}
+          description-path: DESCRIPTION
+          default-deps: ${{ inputs.default-deps }}
+          base-packages: |
+            any::lintr
+            local::.
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::lintr, local::.
+          extra-packages: ${{ steps.deps.outputs.extra-packages }}
           needs: lint
 
       - name: Write lintr config
