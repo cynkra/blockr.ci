@@ -39,4 +39,5 @@ runs:
         PR_BODY: ${{ inputs.pr-body }}
         PKG: ${{ inputs.pkg }}
         BASE_PACKAGES: ${{ inputs.base-packages }}
-      run: ${{ github.action_path }}/parse-deps.sh
+        SCRIPT_DIR: ${{ github.action_path }}
+      run: bash "$SCRIPT_DIR/parse-deps.sh"
