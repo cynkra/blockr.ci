@@ -6,7 +6,6 @@
 #     push:
 #       branches: main
 #     pull_request:
-#       branches: main
 #     merge_group:
 #
 #   name: ci
@@ -25,7 +24,6 @@ on:
   push:
     branches: main
   pull_request:
-    branches: main
   merge_group:
   workflow_call:
     inputs:
