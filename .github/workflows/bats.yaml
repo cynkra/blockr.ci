@@ -1,0 +1,22 @@
+name: Action tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/actions/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/actions/**'
+
+jobs:
+  bats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Run bats tests
+        run: .github/actions/tests/bats/bin/bats .github/actions/tests/
