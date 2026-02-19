@@ -248,9 +248,18 @@ jobs:
         with:
           use-public-rspm: true
 
+      - uses: cynkra/blockr.ci/.github/actions/parse-deps@main
+        id: deps
+        with:
+          pr-body: ${{ github.event.pull_request.body }}
+          description-path: DESCRIPTION
+          default-deps: ${{ inputs.default-deps }}
+          base-packages: |
+            any::covr
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::covr
+          extra-packages: ${{ steps.deps.outputs.extra-packages }}
           needs: coverage
 
       - name: Test coverage
@@ -342,7 +351,9 @@ jobs:
 
     needs: smoke
 
-    if: ${{ !inputs.skip-pkgdown }}
+    if: >-
+      !inputs.skip-pkgdown &&
+      (github.event_name != 'pull_request' || github.event.pull_request.base.ref == 'main')
 
     runs-on: ubuntu-latest
 
@@ -364,9 +375,19 @@ jobs:
         with:
           use-public-rspm: true
 
+      - uses: cynkra/blockr.ci/.github/actions/parse-deps@main
+        id: deps
+        with:
+          pr-body: ${{ github.event.pull_request.body }}
+          description-path: DESCRIPTION
+          default-deps: ${{ inputs.default-deps }}
+          base-packages: |
+            any::pkgdown
+            local::.
+
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::pkgdown, local::.
+          extra-packages: ${{ steps.deps.outputs.extra-packages }}
           needs: website
 
       - name: Remove mermaid config for CI
