@@ -54,4 +54,5 @@ runs:
         DESCRIPTION_PATH: ${{ inputs.description-path }}
         DEFAULT_DEPS: ${{ inputs.default-deps }}
         REGISTRY: ${{ github.action_path }}/../registry.txt
-      run: ${{ github.action_path }}/parse-deps.sh
+        SCRIPT_DIR: ${{ github.action_path }}
+      run: bash "$SCRIPT_DIR/parse-deps.sh"
