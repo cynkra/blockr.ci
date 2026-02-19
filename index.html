@@ -145,6 +145,12 @@
 <td><code>false</code></td>
 <td>Skip pkgdown for repos with custom site builds</td>
 </tr>
+<tr class="even">
+<td><code>default-deps</code></td>
+<td>newline-separated list</td>
+<td><code>''</code></td>
+<td>Extra pak refs always included in dependency resolution (e.g., <code>cynkra/g6R</code>). Overrides registry; overridden by PR body deps block.</td>
+</tr>
 </tbody>
 </table>
 <div class="section level3">
@@ -160,9 +166,11 @@
 <span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="fu">      lintr-exclusions</span><span class="kw">: </span><span class="ch">|</span></span>
 <span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>        vignettes/foo.qmd</span>
 <span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>        vignettes/bar.qmd</span>
-<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span><span class="at"> inherit</span></span>
-<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span></code></pre></div>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a><span class="fu">      default-deps</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>        cynkra/g6R</span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span><span class="at"> inherit</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -188,13 +196,38 @@
 </ul>
 </div>
 <div class="section level2">
-<h2 id="overriding-dependency-refs-in-prs">Overriding dependency refs in PRs<a class="anchor" aria-label="anchor" href="#overriding-dependency-refs-in-prs"></a>
+<h2 id="dependency-resolution">Dependency resolution<a class="anchor" aria-label="anchor" href="#dependency-resolution"></a>
 </h2>
-<p>When developing across blockr packages, you often need CI to test against a branch or PR of an upstream dependency rather than the released version. Add a fenced <code>deps</code> block to the PR body to override what gets installed during smoke, check, and revdep jobs:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="in">```deps</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="in">cynkra/blockr.core@my-feature-branch</span></span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="in">cynkra/blockr.dock#42</span></span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="in">```</span></span></code></pre></div>
+<p>Dependencies on internal blockr.* packages are resolved automatically via three layers (lowest to highest priority):</p>
+<div class="section level3">
+<h3 id="id_1-package-registry-automatic">1. Package registry (automatic)<a class="anchor" aria-label="anchor" href="#id_1-package-registry-automatic"></a>
+</h3>
+<p>A central registry file (<code>.github/actions/registry.txt</code>) maps R package names to GitHub refs:</p>
+<pre><code><span><span class="va">blockr.core</span><span class="op">=</span><span class="va">BristolMyersSquibb</span><span class="op">/</span><span class="va">blockr.core</span></span>
+<span><span class="va">blockr.dock</span><span class="op">=</span><span class="va">BristolMyersSquibb</span><span class="op">/</span><span class="va">blockr.dock</span></span>
+<span><span class="va">blockr.dag</span><span class="op">=</span><span class="va">BristolMyersSquibb</span><span class="op">/</span><span class="va">blockr.dag</span></span></code></pre>
+<p>When a consumer package lists <code>blockr.core</code> in its DESCRIPTION <code>Imports</code>, <code>Depends</code>, or <code>Suggests</code>, CI automatically adds <code>BristolMyersSquibb/blockr.core</code> to the install list. No <code>Remotes:</code> field needed.</p>
+</div>
+<div class="section level3">
+<h3 id="id_2-default-deps-workflow-input-per-repo">2. <code>default-deps</code> workflow input (per-repo)<a class="anchor" aria-label="anchor" href="#id_2-default-deps-workflow-input-per-repo"></a>
+</h3>
+<p>For dependencies not in the registry (e.g., <code>cynkra/g6R</code>), pass them via the <code>default-deps</code> input:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="at">  </span><span class="fu">ci</span><span class="kw">:</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> cynkra/blockr.ci/.github/workflows/ci.yaml@main</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a><span class="fu">      default-deps</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>        cynkra/g6R</span></code></pre></div>
+<p>These override registry entries for the same <code>owner/repo</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="id_3-pr-body-deps-block-per-pr-override">3. PR body <code>deps</code> block (per-PR override)<a class="anchor" aria-label="anchor" href="#id_3-pr-body-deps-block-per-pr-override"></a>
+</h3>
+<p>Add a fenced <code>deps</code> block to the PR body to override any dependency for that specific PR:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="in">```deps</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="in">BristolMyersSquibb/blockr.core@my-feature-branch</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="in">BristolMyersSquibb/blockr.dock#42</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="in">```</span></span></code></pre></div>
 <p>Each line is a pak ref. Two override syntaxes are supported:</p>
 <ul>
 <li>
@@ -202,11 +235,12 @@
 <li>
 <strong><code>owner/repo#123</code></strong> — install from a pull request</li>
 </ul>
-<p>These refs are passed to <code>r-lib/actions/setup-r-dependencies</code> as extra packages and override whatever version would normally be installed. For revdep checks, the <code>#123</code> and <code>@branch</code> syntax also controls which ref of the downstream package gets checked out.</p>
+<p>PR body deps override both registry and <code>default-deps</code> entries for the same <code>owner/repo</code>. These refs are passed to <code>r-lib/actions/setup-r-dependencies</code> as extra packages. For revdep checks, the <code>#123</code> and <code>@branch</code> syntax also controls which ref of the downstream package gets checked out.</p>
+</div>
 <div class="section level3">
 <h3 id="how-it-works">How it works<a class="anchor" aria-label="anchor" href="#how-it-works"></a>
 </h3>
-<p>The <strong>parse-deps</strong> composite action extracts the <code>deps</code> block from the PR body on every CI run. The <strong>deps-rerun</strong> workflow watches for PR body edits — when the <code>deps</code> block changes, it automatically re-runs the smoke and revdep jobs without needing a new push.</p>
+<p>The <strong>parse-deps</strong> composite action resolves dependencies on every CI run using the three layers above, deduplicating by <code>owner/repo</code> prefix (higher-priority layers win). The <strong>deps-rerun</strong> workflow watches for PR body edits — when the <code>deps</code> block changes, it automatically re-runs the smoke and revdep jobs without needing a new push.</p>
 </div>
 <div class="section level3">
 <h3 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
@@ -214,11 +248,12 @@
 <p>You’re working on <code>blockr.dock</code> and need it tested against an in-progress PR on <code>blockr.core</code>:</p>
 <ol style="list-style-type: decimal">
 <li><p>Open your PR on <code>blockr.dock</code></p></li>
+<li><p><code>blockr.core</code> is already auto-resolved from the registry (installed from default branch)</p></li>
 <li>
-<p>Add to the PR body:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="in">```deps</span></span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="in">cynkra/blockr.core#87</span></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="in">```</span></span></code></pre></div>
+<p>To test against a specific PR, add to the PR body:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="in">```deps</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="in">BristolMyersSquibb/blockr.core#87</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="in">```</span></span></code></pre></div>
 </li>
 <li><p>CI installs <code>blockr.core</code> from PR #87 instead of the default branch</p></li>
 <li><p>If you later change the deps block (e.g., point to a different PR), the affected jobs re-run automatically</p></li>
