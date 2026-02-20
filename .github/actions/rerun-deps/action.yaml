@@ -23,7 +23,7 @@ inputs:
   job-pattern:
     description: Extended-regex pattern matched against job names.
     required: false
-    default: ^(lint|smoke|revdep)
+    default: (lint|smoke|revdep)
 
 runs:
   using: composite
@@ -56,8 +56,19 @@ runs:
           exit 1
         fi
 
-        gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" --paginate \
-          --jq ".jobs[] | select(.name | test(\"$JOB_PATTERN\")) | .id" \
-        | while read -r JOB_ID; do
-          gh api "repos/$REPO/actions/jobs/$JOB_ID/rerun" --method POST
+        echo "Looking for jobs matching '$JOB_PATTERN' in run $RUN_ID"
+
+        JOBS=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" --paginate \
+          --jq ".jobs[] | select(.name | test(\"$JOB_PATTERN\")) | \"\(.id) \(.name)\"")
+
+        if [ -z "$JOBS" ]; then
+          echo "No matching jobs found. Available jobs:"
+          gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" --paginate \
+            --jq '.jobs[] | "  \(.name)"'
+          exit 1
+        fi
+
+        echo "$JOBS" | while read -r JOB_ID JOB_NAME; do
+          echo "Re-running job $JOB_ID ($JOB_NAME)"
+          gh api "repos/$REPO/actions/jobs/$JOB_ID/rerun" --method POST 2>&1 || true
         done
