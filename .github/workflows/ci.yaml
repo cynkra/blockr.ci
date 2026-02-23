@@ -84,6 +84,7 @@ jobs:
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}
+          pr-number: ${{ github.event.pull_request.number }}
           description-path: DESCRIPTION
           default-deps: ${{ inputs.default-deps }}
           base-packages: |
@@ -147,6 +148,7 @@ jobs:
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}
+          pr-number: ${{ github.event.pull_request.number }}
           description-path: DESCRIPTION
           default-deps: ${{ inputs.default-deps }}
 
@@ -214,6 +216,7 @@ jobs:
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}
+          pr-number: ${{ github.event.pull_request.number }}
           description-path: DESCRIPTION
           default-deps: ${{ inputs.default-deps }}
 
@@ -252,6 +255,7 @@ jobs:
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}
+          pr-number: ${{ github.event.pull_request.number }}
           description-path: DESCRIPTION
           default-deps: ${{ inputs.default-deps }}
           base-packages: |
@@ -312,6 +316,7 @@ jobs:
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}
+          pr-number: ${{ github.event.pull_request.number }}
           pkg: ${{ matrix.pkg }}
           base-packages: |
             any::rcmdcheck
@@ -379,6 +384,7 @@ jobs:
         id: deps
         with:
           pr-body: ${{ github.event.pull_request.body }}
+          pr-number: ${{ github.event.pull_request.number }}
           description-path: DESCRIPTION
           default-deps: ${{ inputs.default-deps }}
           base-packages: |

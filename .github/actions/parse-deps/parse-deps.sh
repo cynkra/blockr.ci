@@ -3,6 +3,15 @@
 # Env vars: PR_BODY, PKG, BASE_PACKAGES, DESCRIPTION_PATH, DEFAULT_DEPS,
 #           REGISTRY, GITHUB_OUTPUT
 
+# --- fetch latest PR body (avoids stale webhook payloads) -------------------
+
+if [[ -n "$PR_NUMBER" && -n "$GH_TOKEN" && -n "$GITHUB_REPOSITORY" ]]; then
+  fresh_body=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.body' 2>/dev/null || true)
+  if [[ -n "$fresh_body" ]]; then
+    PR_BODY="$fresh_body"
+  fi
+fi
+
 # --- helpers ----------------------------------------------------------------
 
 extract_r_deps() {
