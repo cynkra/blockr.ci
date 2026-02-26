@@ -15,16 +15,12 @@ fi
 # --- helpers ----------------------------------------------------------------
 
 extract_r_deps() {
-  awk '
-    /^(Depends|Imports|Suggests):/ { in_field = 1; sub(/^[^:]*:/, ""); buf = $0; next }
-    /^[[:space:]]/ && in_field { buf = buf " " $0; next }
-    { if (in_field) { print buf; in_field = 0; buf = "" } }
-    END { if (in_field) print buf }
-  ' "$1" \
-    | tr ',' '\n' \
-    | sed 's/([^)]*)//g; s/^[[:space:]]*//; s/[[:space:]]*$//' \
-    | grep -v '^$' \
-    | grep -v '^R$'
+  Rscript -e '
+    d <- read.dcf(commandArgs(TRUE), fields = c("Depends", "Imports", "Suggests"))
+    pkgs <- unlist(strsplit(na.omit(as.vector(d)), ","))
+    pkgs <- trimws(sub("\\(.*", "", pkgs))
+    cat(pkgs[nzchar(pkgs) & pkgs != "R"], sep = "\n")
+  ' "$1"
 }
 
 declare -A dep_map
