@@ -52,28 +52,44 @@ for candidate in DESCRIPTION pkg/DESCRIPTION; do
   fi
 done
 
+dcf_field() {
+  local field="$1" file="$2"
+  awk -v F="$field" '
+    /^[[:alpha:]][[:alnum:]._-]*:/ {
+      name = $0; sub(/:.*/, "", name)
+      if (capture) exit
+      if (name == F) {
+        capture = 1
+        val = $0; sub(/^[^:]*:[[:space:]]*/, "", val)
+      }
+      next
+    }
+    capture && /^[[:space:]]/ {
+      line = $0; sub(/^[[:space:]]+/, "", line)
+      val = val " " line
+    }
+    END { if (capture) print val }
+  ' "$file"
+}
+
 forward_deps=""
 if [[ -n "$desc" ]]; then
-  forward_deps=$(Rscript --vanilla -e '
-    args <- commandArgs(TRUE)
-    d <- read.dcf(args[1])
-    pkgs <- character()
-    for (f in intersect(c("Imports", "Depends", "LinkingTo", "Suggests"), colnames(d))) {
-      x <- strsplit(d[1, f], ",")[[1]]
-      x <- trimws(x)
-      x <- sub("\\s*\\(.*$", "", x)
-      pkgs <- c(pkgs, x)
-    }
-    if ("Remotes" %in% colnames(d)) {
-      x <- strsplit(d[1, "Remotes"], ",")[[1]]
-      x <- trimws(x)
-      x <- sub("[@#].*$", "", x)
-      x <- sub("^.*/", "", x)
-      pkgs <- c(pkgs, x)
-    }
-    pkgs <- pkgs[pkgs != "" & pkgs != "R"]
-    cat(unique(pkgs), sep = "\n")
-  ' "$desc" 2>/dev/null || true)
+  tmp=""
+  for f in Imports Depends LinkingTo Suggests; do
+    val=$(dcf_field "$f" "$desc")
+    if [[ -n "$val" ]]; then
+      names=$(echo "$val" | tr ',' '\n' \
+        | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[[:space:]]*\(.*$//')
+      tmp+=$'\n'"$names"
+    fi
+  done
+  remotes_val=$(dcf_field "Remotes" "$desc")
+  if [[ -n "$remotes_val" ]]; then
+    names=$(echo "$remotes_val" | tr ',' '\n' \
+      | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//; s/[@#].*$//; s|^.*/||')
+    tmp+=$'\n'"$names"
+  fi
+  forward_deps=$(echo "$tmp" | sort -u | grep -v '^$\|^R$' || true)
 else
   echo "::warning::parse-deps: no DESCRIPTION found at ./ or pkg/; skipping forward-dep validation" >&2
 fi
