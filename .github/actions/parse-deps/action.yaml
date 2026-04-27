@@ -46,7 +46,7 @@ runs:
     - name: Ensure pkgdepends
       shell: bash
       run: |
-        Rscript -e 'if (!requireNamespace("pkgdepends", quietly = TRUE)) install.packages("pkgdepends")'
+        Rscript -e 'if (!requireNamespace("pkgdepends", quietly = TRUE)) install.packages("pkgdepends", repos = Sys.getenv("RSPM", unset = "https://cloud.r-project.org"))'
 
     - name: Parse
       id: parse
