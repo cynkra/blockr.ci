@@ -197,38 +197,35 @@ Remotes:
     cynkra/g6R</code></pre>
 <p><code>r-lib/actions/setup-r-dependencies</code> reads <code>Remotes:</code> directly, and so does <code><a href="https://pak.r-lib.org/reference/local_install.html" class="external-link">pak::local_install()</a></code> on a contributor’s laptop — CI behavior is exactly what you get locally, no central registry, no implicit overrides.</p>
 <div class="section level3">
-<h3 id="per-pr-overrides">Per-PR overrides<a class="anchor" aria-label="anchor" href="#per-pr-overrides"></a>
+<h3 id="per-pr-revdep-refs">Per-PR revdep refs<a class="anchor" aria-label="anchor" href="#per-pr-revdep-refs"></a>
 </h3>
-<p>When a PR needs to be tested against an in-progress branch or pull request of a dependency, add a fenced <code>deps</code> block to the PR body:</p>
+<p>The deps block in a PR body controls which ref of each revdep gets checked out for the <strong>revdep job</strong> — nothing else. It is not a mechanism for overriding forward dependencies; those belong in <code>Remotes:</code> in <code>DESCRIPTION</code>.</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="in">```deps</span></span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="in">BristolMyersSquibb/blockr.core@my-feature-branch</span></span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="in">BristolMyersSquibb/blockr.dock#42</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="in">BristolMyersSquibb/blockr.dag#111</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="in">BristolMyersSquibb/blockr.ai@my-feature-branch</span></span>
 <span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="in">```</span></span></code></pre></div>
-<p>Each line is a pak ref. Two override syntaxes are supported:</p>
-<ul>
-<li>
-<strong><code>owner/repo@branch</code></strong> — install from a specific branch</li>
-<li>
-<strong><code>owner/repo#123</code></strong> — install from a pull request</li>
-</ul>
-<p>These refs are passed to <code>setup-r-dependencies</code> as extra packages and override the matching <code>Remotes:</code> entry for the duration of the CI run. For revdep checks, the <code>#123</code> and <code>@branch</code> syntax also controls which ref of the downstream package gets checked out.</p>
+<p>Each line is <code>owner/repo@branch</code> or <code>owner/repo#PR-number</code>. The matching revdep job checks out that ref instead of the default branch.</p>
+<p><code>parse-deps</code> validates each entry against the package’s <code>DESCRIPTION</code>: if a deps-block entry’s package name appears in <code>Imports</code>/<code>Depends</code>/<code>LinkingTo</code>/<code>Suggests</code>/<code>Remotes</code>, parse-deps fails with a pointer to <code>Remotes:</code>. This catches the common mistake of trying to use the deps block to swap in a dev branch of a forward dep.</p>
 <p>When the deps block changes, the <strong>deps-rerun</strong> workflow re-runs the smoke and revdep jobs without needing a new push.</p>
 </div>
 <div class="section level3">
 <h3 id="example">Example<a class="anchor" aria-label="anchor" href="#example"></a>
 </h3>
-<p>You’re working on <code>blockr.dock</code> and need it tested against an in-progress PR on <code>blockr.core</code>:</p>
+<p>You’re working on <code>blockr.dock</code> and need the revdep job to test against an in-progress PR on <code>blockr.dag</code>:</p>
 <ol style="list-style-type: decimal">
-<li><p>Open your PR on <code>blockr.dock</code> (<code>Remotes: BristolMyersSquibb/blockr.core</code> in DESCRIPTION installs <code>blockr.core</code> from its default branch by default)</p></li>
+<li><p>Open your PR on <code>blockr.dock</code>. The configured <code>revdep-packages</code> input includes <code>BristolMyersSquibb/blockr.dag</code>, so the revdep job runs against <code>blockr.dag</code>’s default branch by default.</p></li>
 <li>
-<p>To test against a specific PR, add to the PR body:</p>
+<p>To pin it to a specific PR, add to the PR body:</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="in">```deps</span></span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="in">BristolMyersSquibb/blockr.core#87</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="in">BristolMyersSquibb/blockr.dag#111</span></span>
 <span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="in">```</span></span></code></pre></div>
 </li>
-<li><p>CI installs <code>blockr.core</code> from PR #87 instead of the default branch</p></li>
-<li><p>If you later change the deps block (e.g., point to a different PR), the affected jobs re-run automatically</p></li>
+<li><p>The revdep job checks out <code>blockr.dag</code> PR #111 head instead.</p></li>
+<li><p>If you later change the deps block (e.g., point to a different PR), the affected jobs re-run automatically.</p></li>
 </ol>
+<p>To override a forward dep (e.g. test against an in-progress <code>blockr.core</code> branch), edit <code>Remotes:</code> in <code>DESCRIPTION</code> instead:</p>
+<pre><code><span><span class="va">Remotes</span><span class="op">:</span></span>
+<span>    <span class="va">BristolMyersSquibb</span><span class="op">/</span><span class="va">blockr.core</span><span class="op">@</span><span class="va">my</span><span class="op">-</span><span class="va">feature</span><span class="op">-</span><span class="va">branch</span></span></code></pre>
 </div>
 </div>
 <div class="section level2">
