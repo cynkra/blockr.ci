@@ -313,7 +313,7 @@ jobs:
           pkg: ${{ matrix.pkg }}
           base-packages: |
             any::rcmdcheck
-            local::pkg
+            local::../pkg
 
       - uses: actions/checkout@v4
         with:
@@ -328,13 +328,14 @@ jobs:
 
       # Two-pass install lets pkg's and revdep's Remotes both get followed
       # while keeping their dependency closures separate. Walking pkg's deps
-      # at top level (e.g. via `deps::pkg` with default `dependencies`) would
-      # also pull in pkg's Suggests and their transitive trees — that has
-      # been observed to leak `uuid` (via a Suggests of one of pkg's deps)
+      # at top level (e.g. via `deps::pkg` with default `dependencies = "all"`)
+      # would also pull in pkg's Suggests and the Suggests of their transitive
+      # deps — observed to leak `uuid` (via blockr.core's Suggests on `ids`)
       # into the install, which flips httpuv/shiny to non-deterministic
       # session nonces and breaks unrelated snapshot tests in the revdep.
       #
-      # Pass 1: install pkg's hard deps with pkg's Remotes resolved.
+      # Pass 1: install pkg's hard deps (no Suggests) with pkg's Remotes
+      # resolved.
       - name: Install pkg hard deps with Remotes resolved
         shell: bash
         run: |
@@ -346,13 +347,16 @@ jobs:
             pak::pkg_install(c("deps::pkg", "local::pkg"), dependencies = "hard")
           '
 
-      # Pass 2: install revdep's full deps (Suggests included for the test
-      # runner) with revdep's Remotes followed via working-directory. Hard
-      # deps already installed in pass 1 are reused.
+      # Pass 2: install revdep's full deps with revdep's Remotes followed via
+      # working-directory. `dependencies: NA` walks Suggests for direct refs
+      # (so the test runner gets testthat / shinytest2 / etc.) but only hard
+      # deps for transitives — so e.g. blockr.core's Suggests don't expand.
+      # Hard deps already installed in pass 1 are reused.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: ${{ steps.deps.outputs.extra-packages }}
           working-directory: revdep
+          dependencies: 'NA'
 
       - uses: r-lib/actions/check-r-package@v2
         with:
