@@ -105,41 +105,45 @@ Remotes:
 
 `r-lib/actions/setup-r-dependencies` reads `Remotes:` directly, and so does `pak::local_install()` on a contributor's laptop — CI behavior is exactly what you get locally, no central registry, no implicit overrides.
 
-### Per-PR overrides
+### Per-PR revdep refs
 
-When a PR needs to be tested against an in-progress branch or pull request of a dependency, add a fenced `deps` block to the PR body:
+The deps block in a PR body controls which ref of each revdep gets checked out for the **revdep job** — nothing else. It is not a mechanism for overriding forward dependencies; those belong in `Remotes:` in `DESCRIPTION`.
 
 ````markdown
 ```deps
-BristolMyersSquibb/blockr.core@my-feature-branch
-BristolMyersSquibb/blockr.dock#42
+BristolMyersSquibb/blockr.dag#111
+BristolMyersSquibb/blockr.ai@my-feature-branch
 ```
 ````
 
-Each line is a pak ref. Two override syntaxes are supported:
+Each line is `owner/repo@branch` or `owner/repo#PR-number`. The matching revdep job checks out that ref instead of the default branch.
 
-- **`owner/repo@branch`** — install from a specific branch
-- **`owner/repo#123`** — install from a pull request
-
-These refs are passed to `setup-r-dependencies` as extra packages and override the matching `Remotes:` entry for the duration of the CI run. For revdep checks, the `#123` and `@branch` syntax also controls which ref of the downstream package gets checked out.
+`parse-deps` validates each entry against the package's `DESCRIPTION`: if a deps-block entry's package name appears in `Imports`/`Depends`/`LinkingTo`/`Suggests`/`Remotes`, parse-deps fails with a pointer to `Remotes:`. This catches the common mistake of trying to use the deps block to swap in a dev branch of a forward dep.
 
 When the deps block changes, the **deps-rerun** workflow re-runs the smoke and revdep jobs without needing a new push.
 
 ### Example
 
-You're working on `blockr.dock` and need it tested against an in-progress PR on `blockr.core`:
+You're working on `blockr.dock` and need the revdep job to test against an in-progress PR on `blockr.dag`:
 
-1. Open your PR on `blockr.dock` (`Remotes: BristolMyersSquibb/blockr.core` in DESCRIPTION installs `blockr.core` from its default branch by default)
-2. To test against a specific PR, add to the PR body:
+1. Open your PR on `blockr.dock`. The configured `revdep-packages` input includes `BristolMyersSquibb/blockr.dag`, so the revdep job runs against `blockr.dag`'s default branch by default.
+2. To pin it to a specific PR, add to the PR body:
 
    ````markdown
    ```deps
-   BristolMyersSquibb/blockr.core#87
+   BristolMyersSquibb/blockr.dag#111
    ```
    ````
 
-3. CI installs `blockr.core` from PR #87 instead of the default branch
-4. If you later change the deps block (e.g., point to a different PR), the affected jobs re-run automatically
+3. The revdep job checks out `blockr.dag` PR #111 head instead.
+4. If you later change the deps block (e.g., point to a different PR), the affected jobs re-run automatically.
+
+To override a forward dep (e.g. test against an in-progress `blockr.core` branch), edit `Remotes:` in `DESCRIPTION` instead:
+
+```
+Remotes:
+    BristolMyersSquibb/blockr.core@my-feature-branch
+```
 
 ## Secrets
 

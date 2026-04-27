@@ -26,8 +26,9 @@ inputs:
     default: ''
   base-packages:
     description: >
-      Newline-separated pak refs to prepend to extra-packages before
-      appending the deps block entries. Defaults to any::rcmdcheck.
+      Newline-separated pak refs that form the extra-packages output.
+      Defaults to any::rcmdcheck. Deps-block entries are validated but
+      never appended here — they only feed the `ref` output.
     required: false
     default: any::rcmdcheck
 
