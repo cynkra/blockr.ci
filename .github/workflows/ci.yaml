@@ -151,6 +151,9 @@ jobs:
           pr-number: ${{ github.event.pull_request.number }}
           description-path: DESCRIPTION
           default-deps: ${{ inputs.default-deps }}
+          base-packages: |
+            any::rcmdcheck
+            local::.
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
@@ -219,6 +222,9 @@ jobs:
           pr-number: ${{ github.event.pull_request.number }}
           description-path: DESCRIPTION
           default-deps: ${{ inputs.default-deps }}
+          base-packages: |
+            any::rcmdcheck
+            local::.
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
