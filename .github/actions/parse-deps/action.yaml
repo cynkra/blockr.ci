@@ -43,6 +43,11 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Ensure pkgdepends
+      shell: bash
+      run: |
+        Rscript -e 'if (!requireNamespace("pkgdepends", quietly = TRUE)) install.packages("pkgdepends")'
+
     - name: Parse
       id: parse
       shell: bash
