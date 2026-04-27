@@ -7,6 +7,7 @@ setup() {
   SCRIPT="$BATS_TEST_DIRNAME/../parse-deps/parse-deps.sh"
   export GITHUB_OUTPUT="$BATS_TEST_TMPDIR/github_output"
   > "$GITHUB_OUTPUT"
+  cd "$BATS_TEST_TMPDIR"
 }
 
 get_output() {
@@ -18,7 +19,24 @@ get_output() {
   fi
 }
 
+# A typical DESCRIPTION used by most cases. Imports + Remotes cover the
+# forward-dep validation paths.
+write_description() {
+  cat > DESCRIPTION <<'EOF'
+Package: testpkg
+Version: 0.0.0
+Imports:
+    blockr.core (>= 0.1.2),
+    glue
+Suggests:
+    testthat
+Remotes:
+    BristolMyersSquibb/blockr.core
+EOF
+}
+
 @test "no deps block: extra-packages = base-packages only, ref empty" {
+  write_description
   export PR_BODY="Just a regular PR body with no deps."
   export PKG=""
   export BASE_PACKAGES="any::rcmdcheck"
@@ -30,7 +48,8 @@ get_output() {
   assert_equal "$(get_output ref)" ""
 }
 
-@test "single dep appended to base-packages" {
+@test "deps-block entry (revdep ref) is NOT appended to extra-packages" {
+  write_description
   export PR_BODY='Some text
 ```deps
 owner/repo
@@ -42,13 +61,12 @@ More text'
   run bash "$SCRIPT"
   assert_success
 
-  result=$(get_output extra-packages)
-  assert_equal "$result" "any::rcmdcheck
-owner/repo"
+  assert_equal "$(get_output extra-packages)" "any::rcmdcheck"
   assert_equal "$(get_output ref)" ""
 }
 
-@test "multiple deps all appended in order" {
+@test "multiple revdep refs: none appended; extra-packages stays as base" {
+  write_description
   export PR_BODY='```deps
 owner/alpha
 owner/beta
@@ -60,14 +78,11 @@ owner/gamma
   run bash "$SCRIPT"
   assert_success
 
-  result=$(get_output extra-packages)
-  assert_equal "$result" "any::rcmdcheck
-owner/alpha
-owner/beta
-owner/gamma"
+  assert_equal "$(get_output extra-packages)" "any::rcmdcheck"
 }
 
 @test "PR number syntax: ref = refs/pull/N/head" {
+  write_description
   export PR_BODY='```deps
 owner/repo#42
 ```'
@@ -81,6 +96,7 @@ owner/repo#42
 }
 
 @test "branch syntax: ref = branch name" {
+  write_description
   export PR_BODY='```deps
 owner/repo@feature-branch
 ```'
@@ -94,6 +110,7 @@ owner/repo@feature-branch
 }
 
 @test "PKG not matching any dep: ref empty" {
+  write_description
   export PR_BODY='```deps
 owner/other@main
 ```'
@@ -107,6 +124,7 @@ owner/other@main
 }
 
 @test "PKG not set: ref empty" {
+  write_description
   export PR_BODY='```deps
 owner/repo@main
 ```'
@@ -119,7 +137,8 @@ owner/repo@main
   assert_equal "$(get_output ref)" ""
 }
 
-@test "Windows line endings stripped" {
+@test "Windows line endings stripped: ref resolved, extra unchanged" {
+  write_description
   export PR_BODY=$'```deps\r\nowner/repo@main\r\n```\r\n'
   export PKG="owner/repo"
   export BASE_PACKAGES="any::rcmdcheck"
@@ -128,12 +147,11 @@ owner/repo@main
   assert_success
 
   assert_equal "$(get_output ref)" "main"
-  result=$(get_output extra-packages)
-  assert_equal "$result" "any::rcmdcheck
-owner/repo@main"
+  assert_equal "$(get_output extra-packages)" "any::rcmdcheck"
 }
 
-@test "blank lines in deps block are skipped" {
+@test "blank lines in deps block are skipped (no error)" {
+  write_description
   export PR_BODY='```deps
 owner/alpha
 
@@ -145,13 +163,11 @@ owner/beta
   run bash "$SCRIPT"
   assert_success
 
-  result=$(get_output extra-packages)
-  assert_equal "$result" "any::rcmdcheck
-owner/alpha
-owner/beta"
+  assert_equal "$(get_output extra-packages)" "any::rcmdcheck"
 }
 
-@test "custom base-packages used instead of default" {
+@test "custom base-packages preserved as-is (deps not appended)" {
+  write_description
   export PR_BODY='```deps
 owner/repo
 ```'
@@ -162,8 +178,83 @@ custom::pkg2"
   run bash "$SCRIPT"
   assert_success
 
-  result=$(get_output extra-packages)
-  assert_equal "$result" "custom::pkg1
-custom::pkg2
-owner/repo"
+  assert_equal "$(get_output extra-packages)" "custom::pkg1
+custom::pkg2"
+}
+
+@test "forward dep (Imports) in deps block: error" {
+  write_description
+  export PR_BODY='```deps
+owner/glue@my-branch
+```'
+  export PKG=""
+  export BASE_PACKAGES="any::rcmdcheck"
+
+  run bash "$SCRIPT"
+  assert_failure
+  assert_output --partial "glue"
+  assert_output --partial "Remotes"
+}
+
+@test "Remotes-listed forward dep in deps block: error" {
+  write_description
+  export PR_BODY='```deps
+BristolMyersSquibb/blockr.core@dev
+```'
+  export PKG=""
+  export BASE_PACKAGES="any::rcmdcheck"
+
+  run bash "$SCRIPT"
+  assert_failure
+  assert_output --partial "blockr.core"
+}
+
+@test "multiple forward-dep errors collected (don't stop at first)" {
+  write_description
+  export PR_BODY='```deps
+owner/glue@x
+fork/blockr.core@y
+```'
+  export PKG=""
+  export BASE_PACKAGES="any::rcmdcheck"
+
+  run bash "$SCRIPT"
+  assert_failure
+  assert_output --partial "glue"
+  assert_output --partial "blockr.core"
+}
+
+@test "DESCRIPTION at pkg/ (revdep job layout) is auto-detected" {
+  mkdir -p pkg
+  cat > pkg/DESCRIPTION <<'EOF'
+Package: testpkg
+Version: 0.0.0
+Imports:
+    glue
+EOF
+  export PR_BODY='```deps
+owner/glue@x
+```'
+  export PKG=""
+  export BASE_PACKAGES="any::rcmdcheck"
+
+  run bash "$SCRIPT"
+  assert_failure
+  assert_output --partial "glue"
+}
+
+@test "no DESCRIPTION present: warns, skips validation, still excludes from extra" {
+  # No write_description / mkdir pkg — empty cwd
+  export PR_BODY='```deps
+owner/repo#5
+```'
+  export PKG="owner/repo"
+  export BASE_PACKAGES="any::rcmdcheck"
+
+  run bash "$SCRIPT"
+  assert_success
+
+  assert_output --partial "no DESCRIPTION"
+  assert_equal "$(get_output extra-packages)" "any::rcmdcheck"
+  assert_equal "$(get_output ref)" "refs/pull/5/head"
 }
