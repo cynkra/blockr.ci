@@ -1,8 +1,8 @@
 name: Parse deps block
 description: >
-  Parses the ```deps block from a PR body, resolves refs, and outputs
-  an extra-packages list for setup-r-dependencies plus (optionally) a
-  git ref for a specific package.
+  Parses the ```deps block from a PR body and outputs an extra-packages
+  list for setup-r-dependencies plus (optionally) a git ref for a
+  specific package.
 
 inputs:
   pr-body:
@@ -30,18 +30,6 @@ inputs:
       appending the deps block entries. Defaults to any::rcmdcheck.
     required: false
     default: any::rcmdcheck
-  description-path:
-    description: >
-      Path to a DESCRIPTION file. If set, internal dependencies are
-      resolved via the package registry and added to extra-packages.
-    required: false
-    default: ''
-  default-deps:
-    description: >
-      Newline-separated pak refs to include in extra-packages.
-      These override registry entries but are overridden by PR body deps.
-    required: false
-    default: ''
 
 outputs:
   extra-packages:
@@ -63,8 +51,5 @@ runs:
         GH_TOKEN: ${{ github.token }}
         PKG: ${{ inputs.pkg }}
         BASE_PACKAGES: ${{ inputs.base-packages }}
-        DESCRIPTION_PATH: ${{ inputs.description-path }}
-        DEFAULT_DEPS: ${{ inputs.default-deps }}
-        REGISTRY: ${{ github.action_path }}/../registry.txt
         SCRIPT_DIR: ${{ github.action_path }}
       run: bash "$SCRIPT_DIR/parse-deps.sh"

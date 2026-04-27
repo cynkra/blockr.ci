@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Parse the ```deps block from a PR body with layered dependency resolution.
-# Env vars: PR_BODY, PKG, BASE_PACKAGES, DESCRIPTION_PATH, DEFAULT_DEPS,
-#           REGISTRY, GITHUB_OUTPUT
-
-# --- fetch latest PR body (avoids stale webhook payloads) -------------------
+# Parse the ```deps block from a PR body.
+# Env vars: PR_BODY, PR_NUMBER, GH_TOKEN, PKG, BASE_PACKAGES, GITHUB_OUTPUT
 
 if [[ -n "$PR_NUMBER" && -n "$GH_TOKEN" && -n "$GITHUB_REPOSITORY" ]]; then
   fresh_body=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '.body' 2>/dev/null || true)
@@ -11,17 +8,6 @@ if [[ -n "$PR_NUMBER" && -n "$GH_TOKEN" && -n "$GITHUB_REPOSITORY" ]]; then
     PR_BODY="$fresh_body"
   fi
 fi
-
-# --- helpers ----------------------------------------------------------------
-
-extract_r_deps() {
-  Rscript -e '
-    d <- read.dcf(commandArgs(TRUE), fields = c("Depends", "Imports", "Suggests"))
-    pkgs <- unlist(strsplit(na.omit(as.vector(d)), ","))
-    pkgs <- trimws(sub("\\(.*", "", pkgs))
-    cat(pkgs[nzchar(pkgs) & pkgs != "R"], sep = "\n")
-  ' "$1"
-}
 
 declare -A dep_map
 dep_keys=()
@@ -35,30 +21,6 @@ add_dep() {
   dep_map["$key"]="$full_ref"
 }
 
-# --- layer 1: registry ------------------------------------------------------
-
-if [[ -n "$DESCRIPTION_PATH" && -f "$DESCRIPTION_PATH" && -n "$REGISTRY" && -f "$REGISTRY" ]]; then
-  while IFS= read -r pkg_name; do
-    [[ -z "$pkg_name" ]] && continue
-    registry_ref=$(grep "^${pkg_name}=" "$REGISTRY" | head -1 | sed "s/^${pkg_name}=//")
-    if [[ -n "$registry_ref" ]]; then
-      add_dep "$registry_ref"
-    fi
-  done < <(extract_r_deps "$DESCRIPTION_PATH")
-fi
-
-# --- layer 2: default-deps --------------------------------------------------
-
-if [[ -n "$DEFAULT_DEPS" ]]; then
-  while IFS= read -r line; do
-    line=$(echo "$line" | tr -d '\r' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    [[ -z "$line" ]] && continue
-    add_dep "$line"
-  done <<< "$DEFAULT_DEPS"
-fi
-
-# --- layer 3: PR body deps block --------------------------------------------
-
 deps=$(echo "$PR_BODY" | tr -d '\r' \
   | sed -n '/^```deps$/,/^```$/p' \
   | grep -v '^```' || true)
@@ -70,8 +32,6 @@ if [[ -n "$deps" ]]; then
   done <<< "$deps"
 fi
 
-# --- build output ------------------------------------------------------------
-
 extra="$BASE_PACKAGES"
 for key in "${dep_keys[@]}"; do
   extra="${extra}
@@ -80,9 +40,8 @@ done
 
 ref=""
 if [[ -n "$PKG" ]]; then
-  pkg_key="$PKG"
-  if [[ -n "${dep_map[$pkg_key]+x}" ]]; then
-    entry="${dep_map[$pkg_key]}"
+  if [[ -n "${dep_map[$PKG]+x}" ]]; then
+    entry="${dep_map[$PKG]}"
     if echo "$entry" | grep -q '#'; then
       pr_num=$(echo "$entry" | sed 's/.*#\([0-9]*\).*/\1/')
       ref="refs/pull/${pr_num}/head"

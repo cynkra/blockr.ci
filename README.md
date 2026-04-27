@@ -59,7 +59,6 @@ All steps are mandatory — a consumer gets the full pipeline or none of it.
 | `revdep-packages` | newline-separated list | `''` | Downstream packages to reverse-dep check. Empty skips the job. |
 | `lintr-exclusions` | newline-separated list | `''` | File paths to exclude from linting |
 | `skip-pkgdown` | boolean | `false` | Skip pkgdown for repos with custom site builds |
-| `default-deps` | newline-separated list | `''` | Extra pak refs always included in dependency resolution (e.g., `cynkra/g6R`). Overrides registry; overridden by PR body deps block. |
 
 ### Example with all inputs
 
@@ -74,8 +73,6 @@ jobs:
       lintr-exclusions: |
         vignettes/foo.qmd
         vignettes/bar.qmd
-      default-deps: |
-        cynkra/g6R
     secrets: inherit
     permissions:
       contents: write
@@ -94,38 +91,23 @@ jobs:
 
 ## Dependency resolution
 
-Dependencies on internal blockr.\* packages are resolved automatically via three layers (lowest to highest priority):
-
-### 1. Package registry (automatic)
-
-A central registry file (`.github/actions/registry.txt`) maps R package names to GitHub refs:
+Non-CRAN dependencies (e.g. other blockr.\* packages, or anything that lives only on GitHub) are declared the standard R way: a `Remotes:` field in `DESCRIPTION`.
 
 ```
-blockr.core=BristolMyersSquibb/blockr.core
-blockr.dock=BristolMyersSquibb/blockr.dock
-blockr.dag=BristolMyersSquibb/blockr.dag
+Package: blockr.dock
+Imports:
+    blockr.core,
+    g6R
+Remotes:
+    BristolMyersSquibb/blockr.core,
+    cynkra/g6R
 ```
 
-When a consumer package lists `blockr.core` in its DESCRIPTION `Imports`, `Depends`, or `Suggests`, CI automatically adds `BristolMyersSquibb/blockr.core` to the install list. No `Remotes:` field needed.
+`r-lib/actions/setup-r-dependencies` reads `Remotes:` directly, and so does `pak::local_install()` on a contributor's laptop — CI behavior is exactly what you get locally, no central registry, no implicit overrides.
 
-### 2. `default-deps` workflow input (per-repo)
+### Per-PR overrides
 
-For dependencies not in the registry (e.g., `cynkra/g6R`), pass them via the `default-deps` input:
-
-```yaml
-jobs:
-  ci:
-    uses: cynkra/blockr.ci/.github/workflows/ci.yaml@main
-    with:
-      default-deps: |
-        cynkra/g6R
-```
-
-These override registry entries for the same `owner/repo`.
-
-### 3. PR body `deps` block (per-PR override)
-
-Add a fenced `deps` block to the PR body to override any dependency for that specific PR:
+When a PR needs to be tested against an in-progress branch or pull request of a dependency, add a fenced `deps` block to the PR body:
 
 ````markdown
 ```deps
@@ -139,19 +121,16 @@ Each line is a pak ref. Two override syntaxes are supported:
 - **`owner/repo@branch`** — install from a specific branch
 - **`owner/repo#123`** — install from a pull request
 
-PR body deps override both registry and `default-deps` entries for the same `owner/repo`. These refs are passed to `r-lib/actions/setup-r-dependencies` as extra packages. For revdep checks, the `#123` and `@branch` syntax also controls which ref of the downstream package gets checked out.
+These refs are passed to `setup-r-dependencies` as extra packages and override the matching `Remotes:` entry for the duration of the CI run. For revdep checks, the `#123` and `@branch` syntax also controls which ref of the downstream package gets checked out.
 
-### How it works
-
-The **parse-deps** composite action resolves dependencies on every CI run using the three layers above, deduplicating by `owner/repo` prefix (higher-priority layers win). The **deps-rerun** workflow watches for PR body edits — when the `deps` block changes, it automatically re-runs the smoke and revdep jobs without needing a new push.
+When the deps block changes, the **deps-rerun** workflow re-runs the smoke and revdep jobs without needing a new push.
 
 ### Example
 
 You're working on `blockr.dock` and need it tested against an in-progress PR on `blockr.core`:
 
-1. Open your PR on `blockr.dock`
-2. `blockr.core` is already auto-resolved from the registry (installed from default branch)
-3. To test against a specific PR, add to the PR body:
+1. Open your PR on `blockr.dock` (`Remotes: BristolMyersSquibb/blockr.core` in DESCRIPTION installs `blockr.core` from its default branch by default)
+2. To test against a specific PR, add to the PR body:
 
    ````markdown
    ```deps
@@ -159,8 +138,8 @@ You're working on `blockr.dock` and need it tested against an in-progress PR on 
    ```
    ````
 
-4. CI installs `blockr.core` from PR #87 instead of the default branch
-5. If you later change the deps block (e.g., point to a different PR), the affected jobs re-run automatically
+3. CI installs `blockr.core` from PR #87 instead of the default branch
+4. If you later change the deps block (e.g., point to a different PR), the affected jobs re-run automatically
 
 ## Secrets
 
