@@ -348,15 +348,17 @@ jobs:
           '
 
       # Pass 2: install revdep's full deps with revdep's Remotes followed via
-      # working-directory. `dependencies: NA` walks Suggests for direct refs
-      # (so the test runner gets testthat / shinytest2 / etc.) but only hard
-      # deps for transitives — so e.g. blockr.core's Suggests don't expand.
+      # working-directory. `dependencies: c("all", "hard")` walks Suggests for
+      # direct refs (so the test runner gets testthat / shinytest2 / etc.) but
+      # only hard deps for transitives — so e.g. blockr.core's Suggests don't
+      # expand into ids -> uuid. (`NA` here doesn't have the desired effect:
+      # pkgdepends treats it as "soft" applied to both direct and indirect.)
       # Hard deps already installed in pass 1 are reused.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: ${{ steps.deps.outputs.extra-packages }}
           working-directory: revdep
-          dependencies: 'NA'
+          dependencies: 'c("all", "hard")'
 
       - uses: r-lib/actions/check-r-package@v2
         with:
