@@ -17,8 +17,6 @@ on:
   pull_request:
   merge_group:
 
-name: ci
-
 jobs:
   ci:
     uses: cynkra/blockr.ci/.github/workflows/ci.yaml@main
