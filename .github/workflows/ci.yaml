@@ -315,7 +315,6 @@ jobs:
           pkg: ${{ matrix.pkg }}
           base-packages: |
             any::rcmdcheck
-            local::../pkg
 
       - uses: actions/checkout@v4
         with:
