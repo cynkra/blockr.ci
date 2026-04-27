@@ -1,3 +1,0 @@
-blockr.core=BristolMyersSquibb/blockr.core
-blockr.dock=BristolMyersSquibb/blockr.dock
-blockr.dag=BristolMyersSquibb/blockr.dag
