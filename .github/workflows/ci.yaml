@@ -359,6 +359,10 @@ jobs:
           extra-packages: ${{ steps.deps.outputs.extra-packages }}
           working-directory: revdep
           dependencies: 'c("all", "hard")'
+          # Bumped to invalidate caches built before the two-pass install
+          # landed — those caches contain Suggests-tree leftovers (e.g. `uuid`)
+          # that pak's resolver no longer pulls in but doesn't remove either.
+          cache-version: 2
 
       - uses: r-lib/actions/check-r-package@v2
         with:
