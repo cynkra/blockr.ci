@@ -283,7 +283,9 @@ jobs:
 
     needs: smoke
 
-    if: needs.smoke.outputs.has-revdep-packages == 'true'
+    if: >-
+      needs.smoke.outputs.has-revdep-packages == 'true' &&
+      github.event_name == 'pull_request'
 
     runs-on: ubuntu-latest
 
