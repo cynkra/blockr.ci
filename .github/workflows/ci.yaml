@@ -313,8 +313,10 @@ jobs:
           pkg: ${{ matrix.pkg }}
           base-packages: |
             any::rcmdcheck
-            local::../pkg
-            local::../revdep
+            deps::pkg
+            deps::revdep
+            local::pkg
+            local::revdep
 
       - uses: actions/checkout@v4
         with:
@@ -327,10 +329,14 @@ jobs:
 
       - uses: quarto-dev/quarto-actions/setup@v2
 
+      # extra-packages contains `deps::pkg` and `deps::revdep`, so pak walks
+      # the Imports + Remotes of BOTH the package under test AND the revdep
+      # being checked. With a single working-directory, pak only follows
+      # Remotes from that one DESCRIPTION (and silently ignores the other),
+      # which leaves dev-only revdep deps unsatisfied.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: ${{ steps.deps.outputs.extra-packages }}
-          working-directory: pkg
 
       - uses: r-lib/actions/check-r-package@v2
         with:
