@@ -313,10 +313,7 @@ jobs:
           pkg: ${{ matrix.pkg }}
           base-packages: |
             any::rcmdcheck
-            deps::pkg
-            deps::revdep
             local::pkg
-            local::revdep
 
       - uses: actions/checkout@v4
         with:
@@ -329,14 +326,33 @@ jobs:
 
       - uses: quarto-dev/quarto-actions/setup@v2
 
-      # extra-packages contains `deps::pkg` and `deps::revdep`, so pak walks
-      # the Imports + Remotes of BOTH the package under test AND the revdep
-      # being checked. With a single working-directory, pak only follows
-      # Remotes from that one DESCRIPTION (and silently ignores the other),
-      # which leaves dev-only revdep deps unsatisfied.
+      # Two-pass install lets pkg's and revdep's Remotes both get followed
+      # while keeping their dependency closures separate. Walking pkg's deps
+      # at top level (e.g. via `deps::pkg` with default `dependencies`) would
+      # also pull in pkg's Suggests and their transitive trees — that has
+      # been observed to leak `uuid` (via a Suggests of one of pkg's deps)
+      # into the install, which flips httpuv/shiny to non-deterministic
+      # session nonces and breaks unrelated snapshot tests in the revdep.
+      #
+      # Pass 1: install pkg's hard deps with pkg's Remotes resolved.
+      - name: Install pkg hard deps with Remotes resolved
+        shell: bash
+        run: |
+          Rscript -e '
+            install.packages("pak", repos = sprintf(
+              "https://r-lib.github.io/p/pak/stable/%s/%s/%s",
+              .Platform$pkgType, R.Version()$os, R.Version()$arch
+            ))
+            pak::pkg_install(c("deps::pkg", "local::pkg"), dependencies = "hard")
+          '
+
+      # Pass 2: install revdep's full deps (Suggests included for the test
+      # runner) with revdep's Remotes followed via working-directory. Hard
+      # deps already installed in pass 1 are reused.
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: ${{ steps.deps.outputs.extra-packages }}
+          working-directory: revdep
 
       - uses: r-lib/actions/check-r-package@v2
         with:
